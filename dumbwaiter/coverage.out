@@ -1,0 +1,26 @@
+mode: set
+github.com/jbruno/dumbwaiter/controller/controller.go:23.36,25.2 1 0
+github.com/jbruno/dumbwaiter/controller/controller.go:56.47,59.2 2 0
+github.com/jbruno/dumbwaiter/controller/controller.go:62.92,74.2 4 1
+github.com/jbruno/dumbwaiter/controller/controller.go:77.30,79.2 0 1
+github.com/jbruno/dumbwaiter/controller/controller.go:83.44,86.6 2 1
+github.com/jbruno/dumbwaiter/controller/controller.go:86.6,90.46 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:107.3,107.34 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:90.46,91.36 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:91.36,93.5 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:93.10,93.40 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:93.40,95.5 1 0
+github.com/jbruno/dumbwaiter/controller/controller.go:97.9,97.53 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:97.53,98.36 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:98.36,100.5 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:100.10,100.38 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:100.38,102.5 1 0
+github.com/jbruno/dumbwaiter/controller/controller.go:103.9,105.4 1 0
+github.com/jbruno/dumbwaiter/controller/controller.go:112.42,120.2 1 1
+github.com/jbruno/dumbwaiter/controller/controller.go:122.31,125.2 2 1
+github.com/jbruno/dumbwaiter/controller/controller.go:127.33,130.2 2 1
+github.com/jbruno/dumbwaiter/controller/controller.go:132.29,135.2 2 0
+github.com/jbruno/dumbwaiter/controller/controller.go:138.45,142.2 3 1
+github.com/jbruno/dumbwaiter/controller/controller.go:145.50,149.2 3 1
+github.com/jbruno/dumbwaiter/controller/controller.go:152.46,156.2 3 0
+github.com/jbruno/dumbwaiter/controller/controller.go:159.51,163.2 3 1
