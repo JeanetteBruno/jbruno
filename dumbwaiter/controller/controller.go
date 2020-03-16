@@ -43,27 +43,42 @@ type Controller struct {
 
 	topFloor int // the top floor number (floor numbers start at 1)
 
-	movingDirection Direction // the direction the cab is currently moving
+	movingDirection   Direction // the direction the cab is currently moving
+	movingDirectionMu sync.RWMutex
 
 	timeStartedMoving  time.Time
 	timeToMoveOneFloor time.Duration
 
-	mainLoopFrequency time.Duration
-	piDevice          common.RPi // the interface with the raspberry pi device
+	mainLoopTicker     *time.Ticker
+	mainLoopTickerCh   <-chan time.Time
+	mainLoopShutdownCh chan struct{}
+	piDevice           common.RPi // the interface with the raspberry pi device
 }
 
 // NewController make a Controller object
 func NewController(maxFloors int) *Controller {
 	piDevice := common.NewRPiDevice()
-	return newController(maxFloors, piDevice, defaultLoopFrequency)
+	return newController(maxFloors, piDevice, defaultLoopFrequency, nil)
 }
 
 // newController private controller constructor exposing Pi device interface for testing
-func newController(maxFloors int, rpi common.RPi, loopFrequency time.Duration) *Controller {
+func newController(maxFloors int, rpi common.RPi, loopFreq time.Duration, timingControlCh <-chan time.Time) *Controller {
+	var controlCh <-chan time.Time
+	var ticker *time.Ticker
+	if timingControlCh == nil {
+		ticker = time.NewTicker(loopFreq) // production code uses ticker at loopFreq
+		controlCh = ticker.C
+	} else {
+		controlCh = timingControlCh // tests that need to control the main loop pass in their own chan
+	}
+
 	controller := &Controller{
-		topFloor:          maxFloors,
-		piDevice:          rpi,
-		mainLoopFrequency: loopFrequency,
+		topFloor:           maxFloors,
+		piDevice:           rpi,
+		mainLoopTickerCh:   controlCh,
+		movingDirection:    Stopped,
+		mainLoopTicker:     ticker,
+		mainLoopShutdownCh: make(chan struct{}),
 	}
 
 	controller.init()
@@ -84,36 +99,38 @@ func (c *Controller) startProcessingLoop() {
 	log.Info("starting controller main loop")
 
 	for {
-		// if the car is stationary and another floor is requested, start it moving in the requested direction
-		// if the car is moving and a floor in the opposite direction has been requested stop the car
-		// (let the next iteration start it moving)
-		if c.requestedFloor > c.GetLastSeenFloor() {
-			if c.movingDirection == Stopped {
-				c.sendUp()
-			} else if c.movingDirection == Down {
-				c.stop() // stop the machine, it start moving up on next iteration
+		select {
+		case tick := <-c.mainLoopTickerCh:
+			log.Infof("got tick: %v", tick)
+			// if the car is stationary and another floor is requested, start it moving in the requested direction
+			// if the car is moving and a floor in the opposite direction has been requested stop the car
+			// (let the next iteration start it moving)
+			if c.GetRequestedFloor() > c.GetLastSeenFloor() {
+				if c.GetMovingDirection() == Stopped {
+					c.sendUp()
+				} else if c.GetMovingDirection() == Down {
+					c.stop() // stop the machine, it start moving up on next iteration
+				}
+				// else do nothing it is already moving up
+			} else if c.GetRequestedFloor() < c.GetLastSeenFloor() {
+				if c.GetMovingDirection() == Stopped {
+					c.sendDown()
+				} else if c.GetMovingDirection() == Up {
+					c.stop() // stop the machine, it will start moving down on next iteration
+				}
+			} else {
+				c.stop()
 			}
-			// else do nothing it is already moving up
-		} else if c.requestedFloor < c.GetLastSeenFloor() {
-			if c.movingDirection == Stopped {
-				c.sendDown()
-			} else if c.movingDirection == Up {
-				c.stop() // stop the machine, it will start moving down on next iteration
-			}
-		} else {
-			c.stop()
 		}
-
-		time.Sleep(c.mainLoopFrequency)
 	}
 }
 
 // GetStatus get the dumbwaiter status
 func (c *Controller) GetStatus() *Status {
 	return &Status{
-		LastSeenFloor:   c.lastSeenFloor,
-		MovingDirection: c.movingDirection,
-		RequestedFloor:  c.requestedFloor,
+		LastSeenFloor:   c.GetLastSeenFloor(),
+		MovingDirection: c.GetMovingDirection(),
+		RequestedFloor:  c.GetRequestedFloor(),
 
 		// TODO add floors' status
 	}
@@ -121,17 +138,17 @@ func (c *Controller) GetStatus() *Status {
 
 func (c *Controller) sendUp() {
 	c.piDevice.SendSignal(common.OpenerUp)
-	c.movingDirection = Up
+	c.SetMovingDirection(Up)
 }
 
 func (c *Controller) sendDown() {
 	c.piDevice.SendSignal(common.OpenerDown)
-	c.movingDirection = Down
+	c.SetMovingDirection(Down)
 }
 
 func (c *Controller) stop() {
 	c.piDevice.SendSignal(common.OpenerStop)
-	c.movingDirection = Stopped
+	c.SetMovingDirection(Stopped)
 }
 
 // GetLastSeenFloor return the floor the dumbwaiter's car was last seen at
@@ -160,4 +177,18 @@ func (c *Controller) SetRequestedFloor(floor int) {
 	c.requestedFloorMU.Lock()
 	defer c.requestedFloorMU.Unlock()
 	c.requestedFloor = floor
+}
+
+// GetMovingDirection get the dumbwaiter's current direction
+func (c *Controller) GetMovingDirection() Direction {
+	c.movingDirectionMu.RLock()
+	defer c.movingDirectionMu.RUnlock()
+	return c.movingDirection
+}
+
+// SetMovingDirection set the dumbwaiter's moving direction
+func (c *Controller) SetMovingDirection(movingDirection Direction) {
+	c.movingDirectionMu.Lock()
+	defer c.movingDirectionMu.Unlock()
+	c.movingDirection = movingDirection
 }
