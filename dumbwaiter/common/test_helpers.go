@@ -1,6 +1,7 @@
 package common
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,24 +9,41 @@ import (
 
 // MockRPi local mock for RPi interface (can't use golang's mock - it has a race condition error)
 type MockRPi struct {
-	t *testing.T
-	expectedCalls []PiPin
-	callCount int
+	deviceName    string
+	t             *testing.T
+	ExpectedCalls []PiPin
+	callCount     int
+
+	latestPin   PiPin
+	latestValue bool
+	pinMu       sync.RWMutex
 }
 
-// NewMockRPi create a mock RPi object that validates it gets send signal calls as in expectedCalls 
-func NewMockRPi(t *testing.T, exepectedCalls []PiPin) *MockRPi {
-	return &MockRPi{t: t, expectedCalls: exepectedCalls}
+// NewMockRPi create a mock RPi object that validates it gets send signal calls as in expectedCalls
+func NewMockRPi(t *testing.T, deviceName string, expectedCalls []PiPin) *MockRPi {
+	return &MockRPi{t: t, deviceName: deviceName, ExpectedCalls: expectedCalls}
 }
 
 // SendSignal mock send signal- validate the calls match expectedCalls
 func (m *MockRPi) SendSignal(pin PiPin) error {
-	assert.Equal(m.t, m.expectedCalls[m.callCount], pin)
+	assert.True(m.t, m.callCount < len(m.ExpectedCalls), "%s expected %d calls, got an extra %s call", m.deviceName, len(m.ExpectedCalls), pin)
+	assert.Equal(m.t, m.ExpectedCalls[m.callCount], pin, "%s expected %s, got %s", m.deviceName, m.ExpectedCalls[m.callCount], pin)
 	m.callCount++
+
+	m.pinMu.Lock()
+	defer m.pinMu.Unlock()
+	m.latestPin = pin
+	m.latestValue = true
+
 	return nil
 }
 
 // GetSignal mock get signal with noop
-func (m *MockRPi) GetSignal(pin PiPin) (bool, error)  {
+func (m *MockRPi) GetSignal(pin PiPin) (bool, error) {
+	m.pinMu.RLock()
+	defer m.pinMu.RUnlock()
+	if m.latestPin == pin {
+		return m.latestValue, nil
+	}
 	return false, nil
 }

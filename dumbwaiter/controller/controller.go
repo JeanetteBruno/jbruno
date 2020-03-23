@@ -9,7 +9,7 @@ import (
 	"github.com/jbruno/dumbwaiter/common"
 )
 
-var defaultLoopFrequency time.Duration = time.Second
+var defaultLoopFrequency time.Duration = 500 * time.Millisecond
 
 // Direction the direction the dumbwaiter car is moving
 type Direction int
@@ -46,62 +46,37 @@ type Controller struct {
 	movingDirection   Direction // the direction the cab is currently moving
 	movingDirectionMu sync.RWMutex
 
-	timeStartedMoving  time.Time
 	timeToMoveOneFloor time.Duration
 
-	mainLoopTicker     *time.Ticker
-	mainLoopTickerCh   <-chan time.Time
-	mainLoopShutdownCh chan struct{}
-	piDevice           common.RPi // the interface with the raspberry pi device
+	mainLoopTicker *time.Ticker
+	mainLoopFreq   time.Duration
+	piDevice       common.RPi // the interface with the raspberry pi device
 }
 
 // NewController make a Controller object
 func NewController(maxFloors int) *Controller {
 	piDevice := common.NewRPiDevice()
-	return newController(maxFloors, piDevice, defaultLoopFrequency, nil)
+	return &Controller{
+		topFloor:        maxFloors,
+		piDevice:        piDevice,
+		movingDirection: Stopped,
+		mainLoopFreq:    defaultLoopFrequency}
 }
 
-// newController private controller constructor exposing Pi device interface for testing
-func newController(maxFloors int, rpi common.RPi, loopFreq time.Duration, timingControlCh <-chan time.Time) *Controller {
-	var controlCh <-chan time.Time
-	var ticker *time.Ticker
-	if timingControlCh == nil {
-		ticker = time.NewTicker(loopFreq) // production code uses ticker at loopFreq
-		controlCh = ticker.C
-	} else {
-		controlCh = timingControlCh // tests that need to control the main loop pass in their own chan
-	}
-
-	controller := &Controller{
-		topFloor:           maxFloors,
-		piDevice:           rpi,
-		mainLoopTickerCh:   controlCh,
-		movingDirection:    Stopped,
-		mainLoopTicker:     ticker,
-		mainLoopShutdownCh: make(chan struct{}),
-	}
-
-	controller.init()
-
-	go controller.startProcessingLoop()
-
-	return controller
+// StartProcessingLoop start the processing loop in its own goroutine
+func (c *Controller) StartProcessingLoop() {
+	go c.processingLoop()
 }
 
-// init query all the floor levers and initialize the car's location
-func (c *Controller) init() {
-	// TODO implement
-}
-
-// startProcessingLoop run the processing loop that listens for signals from the floor and user
+// processingLoop run the processing loop that listens for signals from the floor and user
 // requests and controlls sending up/down/stop commands to the garage door opener
-func (c *Controller) startProcessingLoop() {
+func (c *Controller) processingLoop() {
 	log.Info("starting controller main loop")
+	c.mainLoopTicker = time.NewTicker(c.mainLoopFreq)
 
 	for {
 		select {
-		case tick := <-c.mainLoopTickerCh:
-			log.Infof("got tick: %v", tick)
+		case <-c.mainLoopTicker.C:
 			// if the car is stationary and another floor is requested, start it moving in the requested direction
 			// if the car is moving and a floor in the opposite direction has been requested stop the car
 			// (let the next iteration start it moving)
@@ -118,7 +93,7 @@ func (c *Controller) startProcessingLoop() {
 				} else if c.GetMovingDirection() == Up {
 					c.stop() // stop the machine, it will start moving down on next iteration
 				}
-			} else {
+			} else if c.GetMovingDirection() != Stopped {
 				c.stop()
 			}
 		}
@@ -137,16 +112,19 @@ func (c *Controller) GetStatus() *Status {
 }
 
 func (c *Controller) sendUp() {
+	log.Info("controller sending up")
 	c.piDevice.SendSignal(common.OpenerUp)
 	c.SetMovingDirection(Up)
 }
 
 func (c *Controller) sendDown() {
+	log.Info("controller sending down")
 	c.piDevice.SendSignal(common.OpenerDown)
 	c.SetMovingDirection(Down)
 }
 
 func (c *Controller) stop() {
+	log.Info("controller stopping")
 	c.piDevice.SendSignal(common.OpenerStop)
 	c.SetMovingDirection(Stopped)
 }
@@ -160,6 +138,7 @@ func (c *Controller) GetLastSeenFloor() int {
 
 // SetLastSeenFloor set floor number the dumbwaiter's car was last seen at
 func (c *Controller) SetLastSeenFloor(floor int) {
+	log.Infof("controller setting last seen floor to %d", floor)
 	c.lastSeenFloorMU.Lock()
 	defer c.lastSeenFloorMU.Unlock()
 	c.lastSeenFloor = floor
@@ -174,6 +153,7 @@ func (c *Controller) GetRequestedFloor() int {
 
 // SetRequestedFloor set the floor the dumbwaiter car should move to
 func (c *Controller) SetRequestedFloor(floor int) {
+	log.Infof("controller setting requested floor to %d", floor)
 	c.requestedFloorMU.Lock()
 	defer c.requestedFloorMU.Unlock()
 	c.requestedFloor = floor
@@ -191,4 +171,18 @@ func (c *Controller) SetMovingDirection(movingDirection Direction) {
 	c.movingDirectionMu.Lock()
 	defer c.movingDirectionMu.Unlock()
 	c.movingDirection = movingDirection
+}
+
+// Controller constructor setters for builder pattern
+
+// SetRPiDevice used by testing to override production RPi interface
+func (c *Controller) SetRPiDevice(piDevice common.RPi) *Controller {
+	c.piDevice = piDevice
+	return c
+}
+
+// SetLoopFrequency used by testing to speed up tests
+func (c *Controller) SetLoopFrequency(freq time.Duration) *Controller {
+	c.mainLoopFreq = freq
+	return c
 }

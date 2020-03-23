@@ -9,12 +9,10 @@ import (
 	"github.com/jbruno/dumbwaiter/common"
 )
 
-var testFrequency time.Duration = 500 * time.Millisecond
-
 // TestRequestUpFromStop test requesting the car to move up 1 floor when it is stopped
 func TestRequestUpFromStop(t *testing.T) {
 	// setup
-	dwController := setup(t, nil, 2, Stopped, []common.PiPin{common.OpenerUp})
+	dwController := setup(t, 2, Stopped, []common.PiPin{common.OpenerUp})
 
 	// test
 	dwController.SetRequestedFloor(3)
@@ -24,12 +22,10 @@ func TestRequestUpFromStop(t *testing.T) {
 // TestRequestStopFromUp test requesting the car to stop floor when it is moving up
 func TestRequestArriveAtRequestedFloor(t *testing.T) {
 	// setup
-	timingCh := make(chan time.Time)
-	dwController := setup(t, timingCh, 2, Up, []common.PiPin{common.OpenerStop})
+	dwController := setup(t, 2, Up, []common.PiPin{common.OpenerStop})
 
 	// test
 	dwController.SetRequestedFloor(2)
-	timingCh <- time.Now()
 	waitForStatus(t, 2, 2, Stopped, dwController, 3*time.Second)
 }
 
@@ -37,7 +33,7 @@ func TestRequestArriveAtRequestedFloor(t *testing.T) {
 // expect to see the dumbwaiter to to stop, then go to moving up
 func TestRequestUpFromMovingDown(t *testing.T) {
 	// setup
-	dwController := setup(t, nil, 2, Down, []common.PiPin{common.OpenerStop, common.OpenerUp})
+	dwController := setup(t, 2, Down, []common.PiPin{common.OpenerStop, common.OpenerUp})
 
 	// test
 	dwController.SetRequestedFloor(3)                       // send the up request
@@ -48,25 +44,21 @@ func TestRequestUpFromMovingDown(t *testing.T) {
 // expect to see the dumbwaiter to to stop, then go to moving down
 func TestRequestDownFromMovingUp(t *testing.T) {
 	// setup
-	timingCh := make(chan time.Time)
-	dwController := setup(t, timingCh, 2, Up, []common.PiPin{common.OpenerStop, common.OpenerDown})
+	dwController := setup(t, 2, Up, []common.PiPin{common.OpenerStop, common.OpenerDown})
 
 	// test
-	dwController.SetRequestedFloor(1)                            // send the down request
-	timingCh <- time.Now()                                       // trigger a control loop to process the request
-	waitForStatus(t, 2, 1, Stopped, dwController, 3*time.Second) // verify that the dumbwaiter is stopped
-
-	timingCh <- time.Now()                                    // trigger a control loop to process the request
+	dwController.SetRequestedFloor(1)                         // send the down request
 	waitForStatus(t, 2, 1, Down, dwController, 3*time.Second) // verify that the dumbwaiter is now moving down
 }
 
 // setup creates a controller, and mock pi interface
-func setup(t *testing.T, timingCh chan time.Time, floor int, direction Direction, expectedSendSignals []common.PiPin) *Controller {
-	mockRPi := common.NewMockRPi(t, expectedSendSignals)
+func setup(t *testing.T, floor int, direction Direction, expectedSendSignals []common.PiPin) *Controller {
+	mockRPi := common.NewMockRPi(t, "controllerRPi", expectedSendSignals)
 	var dwController *Controller
-	dwController = newController(3, mockRPi, testFrequency, timingCh)
+	dwController = NewController(3).SetRPiDevice(mockRPi).SetLoopFrequency(500 * time.Millisecond)
 	dwController.SetLastSeenFloor(floor)
 	dwController.SetMovingDirection(direction)
+	dwController.StartProcessingLoop()
 	return dwController
 }
 
@@ -84,7 +76,6 @@ func testFloorRequest(t *testing.T, lastSeenFloor int, currentDirection Directio
 }
 
 func waitForStatus(t *testing.T, lastSeenFloor int, requestedFloor int, expectedDirection Direction, dwc *Controller, timeout time.Duration) {
-
 	waitTill := time.Now().Add(timeout)
 	for time.Now().Before(waitTill) {
 		s := dwc.GetStatus()
