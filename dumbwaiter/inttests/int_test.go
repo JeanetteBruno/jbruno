@@ -32,12 +32,32 @@ func TestFloor3CallsToFloor3WhenControllerIsStoppedAt2(t *testing.T) {
 	rpis[3].SendSignal(common.Floor3Requested)
 
 	waitForControllerStatus(t, 2, 3, controller.Up, dwc, 5*time.Second)
+}
 
+// TestPlatformArrivesAtRequestedFloor
+func TestPlatformArrivesAtRequestedFloor(t *testing.T) {
+	rpis, dwc, _ := setup(t, 2, controller.Stopped)
+	rpis[0].ExpectedCalls = []common.PiPin{common.OpenerUp, common.OpenerStop}
+	rpis[1].ExpectedCalls = []common.PiPin{common.Floor3Requested}
+	rpis[3].ExpectedCalls = []common.PiPin{common.AtFloor}
+
+	// trigger the up request
+	log.Info("floor 3 is requesting the dumbwaiter to go to floor 3")
+	rpis[1].SendSignal(common.Floor3Requested)
+
+	go func() {
+		select {
+		case <-time.After(1 * time.Second):
+			rpis[3].SendSignal(common.AtFloor)
+		}
+	}()
+
+	waitForControllerStatus(t, 3, 3, controller.Stopped, dwc, 5*time.Second)
 }
 
 // setup creates a controller and sensors, each with their own mock pi interface
 func setup(t *testing.T, floor int, direction controller.Direction) ([]*common.MockRPi, *controller.Controller, []*floor_sensors.Sensors) {
-	testFrequency := 1 * time.Second // speed up tests
+	testFrequency := 50 * time.Millisecond // speed up tests
 
 	var mockRPis [5]*common.MockRPi
 	// set up the controller

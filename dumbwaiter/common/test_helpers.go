@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -26,7 +27,10 @@ func NewMockRPi(t *testing.T, deviceName string, expectedCalls []PiPin) *MockRPi
 
 // SendSignal mock send signal- validate the calls match expectedCalls
 func (m *MockRPi) SendSignal(pin PiPin) error {
-	assert.True(m.t, m.callCount < len(m.ExpectedCalls), "%s expected %d calls, got an extra %s call", m.deviceName, len(m.ExpectedCalls), pin)
+	if m.callCount >= len(m.ExpectedCalls) {
+		assert.Fail(m.t, fmt.Sprintf("%s expected %d calls, got an extra %s call", m.deviceName, len(m.ExpectedCalls), pin))
+		return nil
+	}
 	assert.Equal(m.t, m.ExpectedCalls[m.callCount], pin, "%s expected %s, got %s", m.deviceName, m.ExpectedCalls[m.callCount], pin)
 	m.callCount++
 

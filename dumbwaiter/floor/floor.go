@@ -52,15 +52,16 @@ func (s *Sensors) processingLoop() {
 		select {
 		case <-s.mainLoopTicker.C:
 			s.handleAtFloorSensor()
-			s.handleFloorRequest(common.Floor1Requested, 1)
-			s.handleFloorRequest(common.Floor2Requested, 2)
-			s.handleFloorRequest(common.Floor3Requested, 3)
+			s.handleFloorRequestSensor(common.Floor1Requested, 1)
+			s.handleFloorRequestSensor(common.Floor2Requested, 2)
+			s.handleFloorRequestSensor(common.Floor3Requested, 3)
 
 			// TODO implement stop button
 		}
 	}
 }
 
+// handleAtFloorSensor sends an atfloor request when the platform reaches this floor
 func (s *Sensors) handleAtFloorSensor() {
 	var sensor bool
 	var err error
@@ -74,7 +75,8 @@ func (s *Sensors) handleAtFloorSensor() {
 	}
 }
 
-func (s *Sensors) handleFloorRequest(pin common.PiPin, floorNum int) {
+// handleFloorRequestSensor sends a new floor request to the controller
+func (s *Sensors) handleFloorRequestSensor(pin common.PiPin, floorNum int) {
 	var buttonPressed bool
 	var err error
 	if buttonPressed, err = s.rpi.GetSignal(pin); err != nil {
