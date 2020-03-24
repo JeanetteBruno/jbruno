@@ -23,23 +23,23 @@ import (
 // third floor's control pad while the dumbwaiter is stopped at floor 2.  Verify that dumbwaiter
 // gets and UP signal
 func TestFloor3CallsToFloor3WhenControllerIsStoppedAt2(t *testing.T) {
-	rpis, dwc, _ := setup(t, 2, controller.Stopped)
-	rpis[0].ExpectedCalls = []common.PiPin{common.OpenerUp}
-	rpis[3].ExpectedCalls = []common.PiPin{common.Floor3Requested}
+	dwc, dwcRpi, _, rpis := setup(t, 2, controller.Stopped)
+	dwcRpi.ExpectedCalls = []common.PiPin{common.OpenerUp}
+	rpis[2].ExpectedCalls = []common.PiPin{common.Floor3Requested}
 
 	// trigger the up request
 	log.Info("floor 3 is requesting the dumbwaiter to go to floor 3")
-	rpis[3].SendSignal(common.Floor3Requested)
+	rpis[2].SendSignal(common.Floor3Requested)
 
 	waitForControllerStatus(t, 2, 3, controller.Up, dwc, 5*time.Second)
 }
 
 // TestPlatformArrivesAtRequestedFloor
 func TestPlatformArrivesAtRequestedFloor(t *testing.T) {
-	rpis, dwc, _ := setup(t, 2, controller.Stopped)
-	rpis[0].ExpectedCalls = []common.PiPin{common.OpenerUp, common.OpenerStop}
+	dwc, dwcRpi, _, rpis := setup(t, 2, controller.Stopped)
+	dwcRpi.ExpectedCalls = []common.PiPin{common.OpenerUp, common.OpenerStop}
 	rpis[1].ExpectedCalls = []common.PiPin{common.Floor3Requested}
-	rpis[3].ExpectedCalls = []common.PiPin{common.AtFloor}
+	rpis[2].ExpectedCalls = []common.PiPin{common.AtFloor}
 
 	// trigger the up request
 	log.Info("floor 3 is requesting the dumbwaiter to go to floor 3")
@@ -48,7 +48,7 @@ func TestPlatformArrivesAtRequestedFloor(t *testing.T) {
 	go func() {
 		select {
 		case <-time.After(1 * time.Second):
-			rpis[3].SendSignal(common.AtFloor)
+			rpis[2].SendSignal(common.AtFloor)
 		}
 	}()
 
@@ -56,14 +56,13 @@ func TestPlatformArrivesAtRequestedFloor(t *testing.T) {
 }
 
 // setup creates a controller and sensors, each with their own mock pi interface
-func setup(t *testing.T, floor int, direction controller.Direction) ([]*common.MockRPi, *controller.Controller, []*floor_sensors.Sensors) {
+func setup(t *testing.T, floor int, direction controller.Direction) (*controller.Controller, *common.MockRPi, []*floor_sensors.Sensors, []*common.MockRPi) {
 	testFrequency := 50 * time.Millisecond // speed up tests
 
-	var mockRPis [5]*common.MockRPi
 	// set up the controller
-	mockRPis[0] = common.NewMockRPi(t, "controllerRPi", nil)
+	controlMockRPi := common.NewMockRPi(t, "controllerRPi", nil)
 	var dwController *controller.Controller
-	dwController = controller.NewController(3).SetRPiDevice(mockRPis[0]).SetLoopFrequency(testFrequency)
+	dwController = controller.NewController(3).SetRPiDevice(controlMockRPi).SetLoopFrequency(testFrequency)
 	dwController.SetLastSeenFloor(floor)
 	dwController.SetMovingDirection(direction)
 	if direction == controller.Stopped {
@@ -75,18 +74,19 @@ func setup(t *testing.T, floor int, direction controller.Direction) ([]*common.M
 	}
 	dwController.StartProcessingLoop()
 
-	var floors [4]*floor_sensors.Sensors
+	var mockRPis [3]*common.MockRPi
+	var floors [3]*floor_sensors.Sensors
 	// set up floor sensors
-	for i := 1; i < 4; i++ {
-		mockRPis[i] = common.NewMockRPi(t, fmt.Sprintf("floor%dRPi", i), nil)
-		floors[i] = floor_sensors.NewSensors(i, "fakeURL").
+	for i := 0; i < 3; i++ {
+		mockRPis[i] = common.NewMockRPi(t, fmt.Sprintf("floor%dRPi", i+1), nil)
+		floors[i] = floor_sensors.NewSensors(i+1, "fakeURL").
 			SetRPiDevice(mockRPis[i]).
 			SetControllerCli(dwController).
 			SetLoopFrequency(testFrequency)
 		floors[i].StartProcessingLoop()
 	}
 
-	return mockRPis[:], dwController, floors[:]
+	return dwController, controlMockRPi, floors[:], mockRPis[:]
 }
 
 func waitForControllerStatus(t *testing.T, lastSeenFloor int, requestedFloor int, expectedDirection controller.Direction, dwc *controller.Controller, timeout time.Duration) {
