@@ -56,7 +56,7 @@ func setup(t *testing.T, floor int, direction Direction, expectedSendSignals []c
 	mockRPi := common.NewMockRPi(t, "controllerRPi", expectedSendSignals)
 	var dwController *Controller
 	dwController = NewController(3).SetRPiDevice(mockRPi).SetLoopFrequency(500 * time.Millisecond)
-	dwController.SetLastSeenFloor(floor)
+	dwController.SetLastSeenFloor(2)
 	dwController.SetMovingDirection(direction)
 	dwController.StartProcessingLoop()
 	return dwController

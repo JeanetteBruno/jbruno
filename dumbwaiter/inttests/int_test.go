@@ -54,8 +54,6 @@ func TestPlatformArrivesAtRequestedFloor(t *testing.T) {
 	}()
 
 	waitForControllerStatus(t, 3, 3, controller.Stopped, dwc, 5*time.Second)
-
-	t.Fail()
 }
 
 // setup creates a controller and sensors, each with their own mock pi interface
