@@ -12,6 +12,7 @@ import (
 
 var defaultLoopFrequency time.Duration = 500 * time.Millisecond
 
+// Sensors monitor sensors at each floor and send requests to controller
 type Sensors struct {
 	floorNum           int
 	selectedFloor      []int
@@ -33,7 +34,7 @@ func NewSensors(floorNum int, controllerURL string) *Sensors {
 		rpi:              common.NewRPiDevice(),
 		loopFreq:         defaultLoopFrequency,
 		controllerURL:    controllerURL,
-		controllerClient: cli.NewControllerHttpCli(controllerURL),
+		controllerClient: cli.NewControllerHTTPClient(controllerURL),
 		priorAtFloor:     false,
 	}
 }
@@ -103,8 +104,8 @@ func (s *Sensors) SetLoopFrequency(freq time.Duration) *Sensors {
 	return s
 }
 
-// SetControllerCli set controller client used by testing
-func (s *Sensors) SetControllerCli(controller api.Controller) *Sensors {
+// SetControllerClient set controller client used by testing
+func (s *Sensors) SetControllerClient(controller api.Controller) *Sensors {
 	s.controllerClient = controller
 	return s
 }

@@ -82,7 +82,7 @@ func setup(t *testing.T, floor int, direction controller.Direction) (*controller
 		mockRPis[i] = common.NewMockRPi(t, fmt.Sprintf("floor%dRPi", i+1), nil)
 		floors[i] = floor_sensors.NewSensors(i+1, "fakeURL").
 			SetRPiDevice(mockRPis[i]).
-			SetControllerCli(dwController).
+			SetControllerClient(dwController).
 			SetLoopFrequency(testFrequency)
 		floors[i].StartProcessingLoop()
 	}

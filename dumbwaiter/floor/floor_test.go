@@ -90,8 +90,8 @@ func TestArriveAtFloor(t *testing.T) {
 	defaultLoopFrequency = 10 * time.Millisecond // speed up tests
 	mockRPi := &fakePiDevice{}
 	// create a controller that validates getting a request on SetLastSeenFloor() entry
-	controllerCli := newvalidatingController(t, []controllerCall{controllerCall{callType: lsf, callValue: 1}})
-	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerCli(controllerCli).SetLoopFrequency(defaultLoopFrequency)
+	controllerClient := newvalidatingController(t, []controllerCall{controllerCall{callType: lsf, callValue: 1}})
+	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerClient(controllerClient).SetLoopFrequency(defaultLoopFrequency)
 	sensors.StartProcessingLoop()
 	signals := map[common.PiPin]fakeSignal{ // set up signalling at the floor
 		common.Floor1Requested: foreverFalseSignal,
@@ -104,7 +104,7 @@ func TestArriveAtFloor(t *testing.T) {
 	mockRPi.signals = signals // this action triggers the test
 
 	// final validation
-	waitForStatus(t, 1, 0, controllerCli, 1*time.Second)
+	waitForStatus(t, 1, 0, controllerClient, 1*time.Second)
 }
 
 func TestPressFloor1Button(t *testing.T) {
@@ -112,8 +112,8 @@ func TestPressFloor1Button(t *testing.T) {
 	defaultLoopFrequency = 10 * time.Millisecond // speed up tests
 	mockRPi := &fakePiDevice{}
 	// create a controller that validates getting a request on SetLastSeenFloor() entry
-	controllerCli := newvalidatingController(t, []controllerCall{controllerCall{callType: rf, callValue: 1}})
-	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerCli(controllerCli).SetLoopFrequency(defaultLoopFrequency)
+	controllerClient := newvalidatingController(t, []controllerCall{controllerCall{callType: rf, callValue: 1}})
+	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerClient(controllerClient).SetLoopFrequency(defaultLoopFrequency)
 	sensors.StartProcessingLoop()
 	signals := map[common.PiPin]fakeSignal{ // set up signalling at the floor
 		common.Floor1Requested: foreverTrueSignal,
@@ -126,7 +126,7 @@ func TestPressFloor1Button(t *testing.T) {
 	mockRPi.signals = signals // this action triggers the test
 
 	// final validation
-	waitForStatus(t, 0, 1, controllerCli, 1*time.Second)
+	waitForStatus(t, 0, 1, controllerClient, 1*time.Second)
 }
 
 func waitForStatus(t *testing.T, lastSeenFloor int, requestedFloor int, dwc *validatingController, timeout time.Duration) {
