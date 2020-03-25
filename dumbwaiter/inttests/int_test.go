@@ -1,6 +1,6 @@
 /*
 Package inttests contains integration tests (feature tests only - non-restian).
-These tests start a controller and 3 floor sensor control loops.
+These tests start a controller and 3 floor sensors.
 The tests then orchestrate and test behavior by
 controlling the fake pi GetSignal() values validating the pi SendSignal() values.
 */
@@ -42,17 +42,20 @@ func TestPlatformArrivesAtRequestedFloor(t *testing.T) {
 	rpis[2].ExpectedCalls = []common.PiPin{common.AtFloor}
 
 	// trigger the up request
-	log.Info("floor 3 is requesting the dumbwaiter to go to floor 3")
+	log.Info("floor 2 is requesting the dumbwaiter to go to floor 3")
 	rpis[1].SendSignal(common.Floor3Requested)
 
 	go func() {
 		select {
 		case <-time.After(1 * time.Second):
+			log.Info("floor 3 is telling controller the dumbwaiter has arrived")
 			rpis[2].SendSignal(common.AtFloor)
 		}
 	}()
 
 	waitForControllerStatus(t, 3, 3, controller.Stopped, dwc, 5*time.Second)
+
+	t.Fail()
 }
 
 // setup creates a controller and sensors, each with their own mock pi interface

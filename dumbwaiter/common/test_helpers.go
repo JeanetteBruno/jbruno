@@ -46,7 +46,7 @@ func (m *MockRPi) SendSignal(pin PiPin) error {
 func (m *MockRPi) GetSignal(pin PiPin) (bool, error) {
 	m.pinMu.RLock()
 	defer m.pinMu.RUnlock()
-	if m.latestPin == pin {
+	if m.latestPin == pin { // only return latestValue if it is for this pin
 		return m.latestValue, nil
 	}
 	return false, nil
