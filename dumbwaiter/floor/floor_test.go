@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jbruno/dumbwaiter/common"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/common"
 )
 
 var testFrequency time.Duration = 500 * time.Millisecond

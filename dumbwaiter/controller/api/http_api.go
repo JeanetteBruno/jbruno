@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jbruno/dumbwaiter/controller"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/controller"
 )
 
 // HTTPController is the structure for adding the controller's restian endpoints

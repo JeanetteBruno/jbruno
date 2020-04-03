@@ -6,7 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jbruno/dumbwaiter/common"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/common"
 )
 
 var defaultLoopFrequency time.Duration = 500 * time.Millisecond

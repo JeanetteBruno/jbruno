@@ -14,9 +14,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jbruno/dumbwaiter/common"
-	"github.com/jbruno/dumbwaiter/controller"
-	floor_sensors "github.com/jbruno/dumbwaiter/floor"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/common"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/controller"
+	floor_sensors "github.com/JeanetteBruno/jbruno/dumbwaiter/floor"
 )
 
 // TestFloor3CallsToFloor3WhenControllerIsStoppedAt2 simulate the floor3 button is pressed on the

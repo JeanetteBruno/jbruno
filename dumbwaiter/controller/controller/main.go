@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 
-	"github.com/jbruno/dumbwaiter/common/httpservice"
-	"github.com/jbruno/dumbwaiter/controller"
-	"github.com/jbruno/dumbwaiter/controller/api"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/common/httpservice"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/controller"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/controller/api"
 )
 
 var (

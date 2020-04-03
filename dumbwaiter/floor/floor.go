@@ -5,9 +5,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jbruno/dumbwaiter/common"
-	"github.com/jbruno/dumbwaiter/controller/api"
-	"github.com/jbruno/dumbwaiter/controller/api/cli"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/common"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/controller/api"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/controller/api/cli"
 )
 
 var defaultLoopFrequency time.Duration = 500 * time.Millisecond

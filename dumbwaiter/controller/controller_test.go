@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jbruno/dumbwaiter/common"
+	"github.com/JeanetteBruno/jbruno/dumbwaiter/common"
 )
 
 // TestRequestUpFromStop test requesting the car to move up 1 floor when it is stopped
