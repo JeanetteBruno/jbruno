@@ -14,6 +14,7 @@ var defaultLoopFrequency time.Duration = 500 * time.Millisecond
 // Direction the direction the dumbwaiter car is moving
 type Direction int
 
+//Direction Constants are Up, Down, and Stopped.
 const (
 	Up Direction = iota
 	Down
@@ -157,6 +158,15 @@ func (c *Controller) SetRequestedFloor(floor int) {
 	c.requestedFloorMU.Lock()
 	defer c.requestedFloorMU.Unlock()
 	c.requestedFloor = floor
+}
+
+//SetStopRequested get a stop request from a floor sensor
+func (c *Controller) SetStopRequested() {
+	log.Infof("controller recieved a stop request")
+	c.requestedFloorMU.Lock()
+	defer c.requestedFloorMU.Unlock()
+	//when requested floor equals the last seen floor the controller will send a stop request
+	c.requestedFloor = c.lastSeenFloor
 }
 
 // GetMovingDirection get the dumbwaiter's current direction

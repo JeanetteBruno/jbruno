@@ -56,8 +56,7 @@ func (s *Sensors) processingLoop() {
 			s.handleFloorRequestSensor(common.Floor1Requested, 1)
 			s.handleFloorRequestSensor(common.Floor2Requested, 2)
 			s.handleFloorRequestSensor(common.Floor3Requested, 3)
-
-			// TODO implement stop button
+			s.handleStopRequestSensor(common.StopRequested)
 		}
 	}
 }
@@ -66,8 +65,11 @@ func (s *Sensors) processingLoop() {
 func (s *Sensors) handleAtFloorSensor() {
 	var sensor bool
 	var err error
-	if sensor, err = s.rpi.GetSignal(common.AtFloor); err != nil {
+	//looking for sensor error
+	sensor, err = s.rpi.GetSignal(common.AtFloor)
+	if err != nil {
 		log.Errorf("error getting AtFloor sensor: %e", err) // TODO implement real error handling
+		return
 	}
 	if sensor && !s.priorAtFloor {
 		log.Infof("sent at floor %d notice to controller", s.floorNum)
@@ -87,6 +89,22 @@ func (s *Sensors) handleFloorRequestSensor(pin common.PiPin, floorNum int) {
 		log.Infof("floor %d send call to floor %d to controller", s.floorNum, floorNum)
 		s.controllerClient.SetRequestedFloor(floorNum)
 		s.priorSelectedFloor = floorNum
+	}
+}
+
+//handleStopRequestSensor sends a stop request to the controller
+func (s *Sensors) handleStopRequestSensor(pin common.PiPin) {
+	var buttonPressed bool
+	var err error
+	if buttonPressed, err = s.rpi.GetSignal(pin); err != nil {
+		log.Errorf("error getting stop button: %e", err) // TODO implement real error handling
+	}
+	if buttonPressed && !s.stopSelected {
+		log.Infof("send stop call to controller")
+
+		//implement controller stop request
+		s.controllerClient.SetStopRequested()
+		s.stopSelected = true
 	}
 }
 

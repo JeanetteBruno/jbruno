@@ -51,11 +51,22 @@ func TestRequestDownFromMovingUp(t *testing.T) {
 	waitForStatus(t, 2, 1, Down, dwController, 3*time.Second) // verify that the dumbwaiter is now moving down
 }
 
-// setup creates a controller, and mock pi interface
+// TestRequestStopFromMovingUp send an stop request when the dumbwaiter is moving up,
+// expect to see the dumbwaiter to to stop; then requested floor equals last seen floor
+func TestRequestStopFromMovingUp(t *testing.T) {
+	// setup
+	dwController := setup(t, 2, Up, []common.PiPin{common.OpenerStop})
+
+	// test
+	dwController.SetStopRequested()                         // send the stop request
+	waitForStatus(t, 2, 2, Stopped, dwController, 3*time.Second) // verify that the dumbwaiter is now stopped
+}
+
+// setup creates a controller, with last seen floor = 2 and mock pi interface
 func setup(t *testing.T, floor int, direction Direction, expectedSendSignals []common.PiPin) *Controller {
 	mockRPi := common.NewMockRPi(t, "controllerRPi", expectedSendSignals)
 	var dwController *Controller
-	dwController = NewController(3).SetRPiDevice(mockRPi).SetLoopFrequency(500 * time.Millisecond)
+	dwController = NewController(3).SetRPiDevice(mockRPi).SetLoopFrequency(10 * time.Millisecond)
 	dwController.SetLastSeenFloor(2)
 	dwController.SetMovingDirection(direction)
 	dwController.StartProcessingLoop()
@@ -77,6 +88,7 @@ func testFloorRequest(t *testing.T, lastSeenFloor int, currentDirection Directio
 
 func waitForStatus(t *testing.T, lastSeenFloor int, requestedFloor int, expectedDirection Direction, dwc *Controller, timeout time.Duration) {
 	waitTill := time.Now().Add(timeout)
+	time.Sleep(500 * time.Millisecond)
 	for time.Now().Before(waitTill) {
 		s := dwc.GetStatus()
 		if expectedDirection == s.MovingDirection && lastSeenFloor == s.LastSeenFloor && requestedFloor == s.RequestedFloor {

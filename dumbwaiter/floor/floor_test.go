@@ -18,6 +18,7 @@ var foreverTrueSignal = fakeSignal{signalValue: true, signalEnd: noSignalEnd}
 const (
 	lsf = "lastSeenFloor"
 	rf  = "requestedFloor"
+	sr = "stopRequested"
 )
 
 type fakeSignal struct {
@@ -32,6 +33,9 @@ type fakePiDevice struct {
 }
 
 func (f *fakePiDevice) GetSignal(pin common.PiPin) (bool, error) {
+	if _, ok := f.signals[pin]; !ok {
+		return false, nil
+	}
 	if f.signals[pin].signalEnd == noSignalEnd || time.Now().Before(f.signals[pin].signalEnd) {
 		return f.signals[pin].signalValue, nil
 	}
@@ -65,7 +69,7 @@ func (f *validatingController) SetRequestedFloor(floor int) {
 		fmt.Sprintf("too many calls to SetLastSeenFloor, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
 	assert.True(f.t, rf == f.expectedSequence[f.currentSeqIndex].callType,
 		fmt.Sprintf("wrong controller api call, expected %s, got %s (call:%d)",
-			rf, f.expectedSequence[f.currentSeqIndex].callType, f.currentSeqIndex+1))
+			f.expectedSequence[f.currentSeqIndex].callType, rf, f.currentSeqIndex+1))
 	assert.True(f.t, f.expectedSequence[f.currentSeqIndex].callValue == floor,
 		fmt.Sprintf("wrong floor number, expected %d got %d (call:%d)",
 			f.expectedSequence[f.currentSeqIndex].callValue, floor, f.currentSeqIndex+1))
@@ -77,12 +81,20 @@ func (f *validatingController) SetLastSeenFloor(floor int) {
 	assert.True(f.t, len(f.expectedSequence) > f.currentSeqIndex,
 		fmt.Sprintf("too many calls to SetLastSeenFloor, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
 	assert.True(f.t, lsf == f.expectedSequence[f.currentSeqIndex].callType, fmt.Sprintf("wrong controller api call, expected %s, got %s (call: %d)",
-		lsf, f.expectedSequence[f.currentSeqIndex].callType, f.currentSeqIndex+1))
+		f.expectedSequence[f.currentSeqIndex].callType, lsf, f.currentSeqIndex+1))
 	assert.True(f.t, f.expectedSequence[f.currentSeqIndex].callValue == floor,
 		fmt.Sprintf("wrong floor number, expected %d got %d (call:%d)",
 			f.expectedSequence[f.currentSeqIndex].callValue, floor, f.currentSeqIndex+1))
 	f.currentSeqIndex++
 	f.lastSeenFloor = floor
+}
+
+func (f *validatingController) SetStopRequested() {
+	assert.True(f.t, len(f.expectedSequence) > f.currentSeqIndex,
+		fmt.Sprintf("too many calls to SetStopRequested, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
+	assert.True(f.t, sr == f.expectedSequence[f.currentSeqIndex].callType, fmt.Sprintf("wrong controller api call, expected %s, got %s (call: %d)",
+		f.expectedSequence[f.currentSeqIndex].callType, sr, f.currentSeqIndex+1))
+	f.currentSeqIndex++
 }
 
 func TestArriveAtFloor(t *testing.T) {
@@ -129,8 +141,31 @@ func TestPressFloor1Button(t *testing.T) {
 	waitForStatus(t, 0, 1, controllerClient, 1*time.Second)
 }
 
+func TestPressStopButton(t *testing.T) {
+	// setup
+	defaultLoopFrequency = 10 * time.Millisecond // speed up tests
+	mockRPi := &fakePiDevice{}
+	// create a controller that validates getting a request on SetLastSeenFloor() entry
+	controllerClient := newvalidatingController(t, []controllerCall{controllerCall{callType: sr}})
+	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerClient(controllerClient).SetLoopFrequency(defaultLoopFrequency)
+	sensors.StartProcessingLoop()
+	signals := map[common.PiPin]fakeSignal{ // set up signalling at the floor
+		common.Floor1Requested: foreverFalseSignal,
+		common.Floor2Requested: foreverFalseSignal,
+		common.Floor3Requested: foreverFalseSignal,
+		common.AtFloor:         foreverFalseSignal,
+		common.StopRequested:   foreverTrueSignal}
+
+	// test
+	mockRPi.signals = signals // this action triggers the test
+
+	// final validation
+	waitForStatus(t, 0, 0, controllerClient, 1*time.Second)
+}
+
 func waitForStatus(t *testing.T, lastSeenFloor int, requestedFloor int, dwc *validatingController, timeout time.Duration) {
 	waitTill := time.Now().Add(timeout)
+	time.Sleep(500 * time.Millisecond)
 	for time.Now().Before(waitTill) {
 		if lastSeenFloor == dwc.lastSeenFloor && requestedFloor == dwc.requestedFloor {
 			return

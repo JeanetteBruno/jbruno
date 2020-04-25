@@ -19,3 +19,8 @@ func (c *ControllerHTTPClient) SetRequestedFloor(floor int) {
 func (c *ControllerHTTPClient) SetLastSeenFloor(floor int) {
 	// TODO implement rest call to controller's SetLastSeenFloor entry
 }
+
+//SetStopRequested tell the controller to stop
+func (c *ControllerHTTPClient) SetStopRequested() {
+	//TODO implement send stop request controller
+}
