@@ -58,7 +58,7 @@ func TestRequestStopFromMovingUp(t *testing.T) {
 	dwController := setup(t, 2, Up, []common.PiPin{common.OpenerStop})
 
 	// test
-	dwController.SetStopRequested()                         // send the stop request
+	dwController.SetStopRequested()                              // send the stop request
 	waitForStatus(t, 2, 2, Stopped, dwController, 3*time.Second) // verify that the dumbwaiter is now stopped
 }
 
@@ -67,7 +67,7 @@ func setup(t *testing.T, floor int, direction Direction, expectedSendSignals []c
 	mockRPi := common.NewMockRPi(t, "controllerRPi", expectedSendSignals)
 	var dwController *Controller
 	dwController = NewController(3).SetRPiDevice(mockRPi).SetLoopFrequency(10 * time.Millisecond)
-	dwController.SetLastSeenFloor(2)
+	dwController.SetFloorStatus(2, true)
 	dwController.SetMovingDirection(direction)
 	dwController.StartProcessingLoop()
 	return dwController

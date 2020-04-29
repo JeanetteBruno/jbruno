@@ -15,9 +15,9 @@ func (c *ControllerHTTPClient) SetRequestedFloor(floor int) {
 	// TODO implement rest call to controller's SetRequestedFloor entry
 }
 
-// SetLastSeenFloor tell the controller that the platform has arrived at a floor
-func (c *ControllerHTTPClient) SetLastSeenFloor(floor int) {
-	// TODO implement rest call to controller's SetLastSeenFloor entry
+// SetFloorStatus tell the controller that the platform has arrived at a floor
+func (c *ControllerHTTPClient) SetFloorStatus(floor int, atFloor bool) {
+	// TODO implement rest call to controller's SetFloorStatus entry
 }
 
 //SetStopRequested tell the controller to stop

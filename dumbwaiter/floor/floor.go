@@ -73,9 +73,13 @@ func (s *Sensors) handleAtFloorSensor() {
 	}
 	if sensor && !s.priorAtFloor {
 		log.Infof("sent at floor %d notice to controller", s.floorNum)
-		s.controllerClient.SetLastSeenFloor(s.floorNum)
+		s.controllerClient.SetFloorStatus(s.floorNum, true)
 		s.priorAtFloor = true
+	} else if !sensor && s.priorAtFloor {
+		s.controllerClient.SetFloorStatus(s.floorNum, false)
+		s.priorAtFloor = false
 	}
+
 }
 
 // handleFloorRequestSensor sends a new floor request to the controller

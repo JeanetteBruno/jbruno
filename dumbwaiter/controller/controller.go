@@ -21,6 +21,16 @@ const (
 	Stopped
 )
 
+//platform location wrt last seen floor
+type platformLoc int
+
+//platform location values
+const (
+	Above platformLoc = iota
+	Below
+	At
+)
+
 func (d Direction) String() string {
 	return [...]string{"up", "down", "stopped"}[d]
 }
@@ -41,6 +51,8 @@ type Controller struct {
 	lastSeenFloorMU  sync.RWMutex
 	requestedFloor   int // the car should move to this floor
 	requestedFloorMU sync.RWMutex
+	platformWRTLSF   platformLoc
+	platformWRTLSFMU sync.RWMutex
 
 	topFloor int // the top floor number (floor numbers start at 1)
 
@@ -80,22 +92,37 @@ func (c *Controller) processingLoop() {
 		case <-c.mainLoopTicker.C:
 			// if the car is stationary and another floor is requested, start it moving in the requested direction
 			// if the car is moving and a floor in the opposite direction has been requested stop the car
+			// if the requested floor is given a stop value; keep the dumbwaiter stopped
 			// (let the next iteration start it moving)
-			if c.GetRequestedFloor() > c.GetLastSeenFloor() {
-				if c.GetMovingDirection() == Stopped {
-					c.sendUp()
-				} else if c.GetMovingDirection() == Down {
-					c.stop() // stop the machine, it start moving up on next iteration
-				}
-				// else do nothing it is already moving up
-			} else if c.GetRequestedFloor() < c.GetLastSeenFloor() {
-				if c.GetMovingDirection() == Stopped {
-					c.sendDown()
-				} else if c.GetMovingDirection() == Up {
-					c.stop() // stop the machine, it will start moving down on next iteration
-				}
-			} else if c.GetMovingDirection() != Stopped {
+
+			//if the requested floor is the stop value direction is stopped
+			if c.requestedFloor == -1 {
 				c.stop()
+				//else move the dumbaiter based on requested floor and last seen floor
+			} else {
+				if c.GetRequestedFloor() > c.GetLastSeenFloor() {
+					if c.GetMovingDirection() == Stopped {
+						c.sendUp()
+					} else if c.GetMovingDirection() == Down {
+						c.stop() // stop the machine, it start moving up on next iteration
+					}
+					// else do nothing it is already moving up
+				} else if c.GetRequestedFloor() < c.GetLastSeenFloor() {
+					if c.GetMovingDirection() == Stopped {
+						c.sendDown()
+					} else if c.GetMovingDirection() == Up {
+						c.stop() // stop the machine, it will start moving down on next iteration
+					}
+					// else if requested floor equals the last seen floor, and if platform is below last seend floor  -> send up
+				} else if c.GetplatformWRTLSF() == Below {
+					c.sendUp()
+					// else if requested floor equals the last seen floor, and if platform is above last seend floor -> send down
+				} else if c.GetplatformWRTLSF() == Above {
+					c.sendDown()
+					// if requested floor equals the last seen floor, set moving direction to stop
+				} else {
+					c.stop()
+				}
 			}
 		}
 	}
@@ -128,6 +155,7 @@ func (c *Controller) stop() {
 	log.Info("controller stopping")
 	c.piDevice.SendSignal(common.OpenerStop)
 	c.SetMovingDirection(Stopped)
+	c.requestedFloor = -1
 }
 
 // GetLastSeenFloor return the floor the dumbwaiter's car was last seen at
@@ -137,12 +165,29 @@ func (c *Controller) GetLastSeenFloor() int {
 	return c.lastSeenFloor
 }
 
-// SetLastSeenFloor set floor number the dumbwaiter's car was last seen at
-func (c *Controller) SetLastSeenFloor(floor int) {
+// SetFloorStatus tells us when platform has reached or left a floor
+func (c *Controller) SetFloorStatus(floor int, atFloor bool) {
 	log.Infof("controller setting last seen floor to %d", floor)
 	c.lastSeenFloorMU.Lock()
 	defer c.lastSeenFloorMU.Unlock()
-	c.lastSeenFloor = floor
+	if atFloor {
+		c.lastSeenFloor = floor
+		c.SetPlatformWRTLSF(At)
+	} else {
+		if c.movingDirection == Up {
+			c.SetPlatformWRTLSF(Above)
+		} else if c.movingDirection == Down {
+			c.SetPlatformWRTLSF(Below)
+		}
+
+	}
+}
+
+// GetplatformWRTLSF return the platform location with respect to the last seen floor
+func (c *Controller) GetplatformWRTLSF() platformLoc {
+	c.platformWRTLSFMU.RLock()
+	defer c.platformWRTLSFMU.RUnlock()
+	return c.platformWRTLSF
 }
 
 // GetRequestedFloor return the floor the dumbwaiter car should move to
@@ -181,6 +226,14 @@ func (c *Controller) SetMovingDirection(movingDirection Direction) {
 	c.movingDirectionMu.Lock()
 	defer c.movingDirectionMu.Unlock()
 	c.movingDirection = movingDirection
+}
+
+// SetPlatformWRTLSF set the platform location with respect to the last seen floor
+func (c *Controller) SetPlatformWRTLSF(platformLoc platformLoc) {
+	log.Infof("controller setting platform location to %d", platformLoc)
+	c.platformWRTLSFMU.Lock()
+	defer c.platformWRTLSFMU.Unlock()
+	c.platformWRTLSF = platformLoc
 }
 
 // Controller constructor setters for builder pattern

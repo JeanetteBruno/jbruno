@@ -64,7 +64,7 @@ func setup(t *testing.T, floor int, direction controller.Direction) (*controller
 	controlMockRPi := common.NewMockRPi(t, "controllerRPi", nil)
 	var dwController *controller.Controller
 	dwController = controller.NewController(3).SetRPiDevice(controlMockRPi).SetLoopFrequency(testFrequency)
-	dwController.SetLastSeenFloor(floor)
+	dwController.SetFloorStatus(floor, true)
 	dwController.SetMovingDirection(direction)
 	if direction == controller.Stopped {
 		dwController.SetRequestedFloor(floor)

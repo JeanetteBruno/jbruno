@@ -18,7 +18,7 @@ var foreverTrueSignal = fakeSignal{signalValue: true, signalEnd: noSignalEnd}
 const (
 	lsf = "lastSeenFloor"
 	rf  = "requestedFloor"
-	sr = "stopRequested"
+	sr  = "stopRequested"
 )
 
 type fakeSignal struct {
@@ -66,7 +66,7 @@ func newvalidatingController(t *testing.T, expectedSequence []controllerCall) *v
 
 func (f *validatingController) SetRequestedFloor(floor int) {
 	assert.True(f.t, len(f.expectedSequence) > f.currentSeqIndex,
-		fmt.Sprintf("too many calls to SetLastSeenFloor, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
+		fmt.Sprintf("too many calls to SetFloorStatus, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
 	assert.True(f.t, rf == f.expectedSequence[f.currentSeqIndex].callType,
 		fmt.Sprintf("wrong controller api call, expected %s, got %s (call:%d)",
 			f.expectedSequence[f.currentSeqIndex].callType, rf, f.currentSeqIndex+1))
@@ -77,9 +77,9 @@ func (f *validatingController) SetRequestedFloor(floor int) {
 	f.requestedFloor = floor
 }
 
-func (f *validatingController) SetLastSeenFloor(floor int) {
+func (f *validatingController) SetFloorStatus(floor int, atFloor bool) {
 	assert.True(f.t, len(f.expectedSequence) > f.currentSeqIndex,
-		fmt.Sprintf("too many calls to SetLastSeenFloor, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
+		fmt.Sprintf("too many calls to SetFloorStatus, expected %d got %d", len(f.expectedSequence), f.currentSeqIndex))
 	assert.True(f.t, lsf == f.expectedSequence[f.currentSeqIndex].callType, fmt.Sprintf("wrong controller api call, expected %s, got %s (call: %d)",
 		f.expectedSequence[f.currentSeqIndex].callType, lsf, f.currentSeqIndex+1))
 	assert.True(f.t, f.expectedSequence[f.currentSeqIndex].callValue == floor,
@@ -101,7 +101,7 @@ func TestArriveAtFloor(t *testing.T) {
 	// setup
 	defaultLoopFrequency = 10 * time.Millisecond // speed up tests
 	mockRPi := &fakePiDevice{}
-	// create a controller that validates getting a request on SetLastSeenFloor() entry
+	// create a controller that validates getting a request on SetFloorStatus() entry
 	controllerClient := newvalidatingController(t, []controllerCall{controllerCall{callType: lsf, callValue: 1}})
 	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerClient(controllerClient).SetLoopFrequency(defaultLoopFrequency)
 	sensors.StartProcessingLoop()
@@ -123,7 +123,7 @@ func TestPressFloor1Button(t *testing.T) {
 	// setup
 	defaultLoopFrequency = 10 * time.Millisecond // speed up tests
 	mockRPi := &fakePiDevice{}
-	// create a controller that validates getting a request on SetLastSeenFloor() entry
+	// create a controller that validates getting a request on SetFloorStatus() entry
 	controllerClient := newvalidatingController(t, []controllerCall{controllerCall{callType: rf, callValue: 1}})
 	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerClient(controllerClient).SetLoopFrequency(defaultLoopFrequency)
 	sensors.StartProcessingLoop()
@@ -145,7 +145,7 @@ func TestPressStopButton(t *testing.T) {
 	// setup
 	defaultLoopFrequency = 10 * time.Millisecond // speed up tests
 	mockRPi := &fakePiDevice{}
-	// create a controller that validates getting a request on SetLastSeenFloor() entry
+	// create a controller that validates getting a request on SetFloorStatus() entry
 	controllerClient := newvalidatingController(t, []controllerCall{controllerCall{callType: sr}})
 	sensors := NewSensors(1, "fakeURL").SetRPiDevice(mockRPi).SetControllerClient(controllerClient).SetLoopFrequency(defaultLoopFrequency)
 	sensors.StartProcessingLoop()
